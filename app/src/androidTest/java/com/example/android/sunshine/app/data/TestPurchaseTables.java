@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.test.AndroidTestCase;
+import android.util.Log;
 
 import java.util.HashSet;
 
@@ -250,12 +251,11 @@ public class TestPurchaseTables extends AndroidTestCase {
         return testValues;
     }
 
+
     public void testRelationTable() {
         PurchaseDbHelper dbHelper = new PurchaseDbHelper(mContext);
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
-        //long customerRowId = insertCustomer();
-        //long productRowId = insertProduct();
         ContentValues testValueTS = createTShirtProductValues();
         ContentValues testValueSK = createSkirtProductValues();
         ContentValues testValueJ = createJackCustomerValues();
@@ -298,26 +298,86 @@ public class TestPurchaseTables extends AndroidTestCase {
 
         // Fifth Step: Validate the location Query
         TestUtilities.validateCurrentRecord("testInsertReadDb relationEntry failed to validate",
-                relationCursor, relationValue1);
+               relationCursor, relationValue1);
 
         // Move the cursor to demonstrate that there is only one record in the database
         //assertFalse( "Error: More than one record returned from relation query",
-        //        relationCursor.moveToNext() );
+        //       relationCursor.moveToNext() );
         relationCursor.moveToNext();
         assertTrue(relationCursor != null);
         TestUtilities.validateCurrentRecord("testInsertReadDb relationEntry failed to validate",
-                relationCursor, relationValue2);
+               relationCursor, relationValue2);
 
-        // Sixth Step: Close cursor and database
+        /*Cursor cJack = db.rawQuery("SELECT customer.name product.name product.price " +
+                "FROM customer INNER JOIN product" +
+                "WHERE customer.name='Jack' " +
+                "ON ", null);*/
+
         relationCursor.close();
         dbHelper.close();
     }
 
-    static ContentValues createRelationValues(long customerRowId, long productRowId) {
+    static ContentValues createRelationValues(long customerId, long productId) {
         // Create a new map of values, where column names are the keys
         ContentValues testValues = new ContentValues();
-        testValues.put(PurchaseContract.RelationEntry.COLUMN_CUSTOMER_KEY, "customer_id");
-        testValues.put(PurchaseContract.RelationEntry.COLUMN_PRODUCT_KEY, "product_id");
+        testValues.put(PurchaseContract.RelationEntry.COLUMN_CUSTOMER_KEY, customerId);
+        testValues.put(PurchaseContract.RelationEntry.COLUMN_PRODUCT_KEY, productId);
         return testValues;
     }
+
+    public void testPurchaseTable() {
+        PurchaseDbHelper dbHelper = new PurchaseDbHelper(mContext);
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+
+        ContentValues ValueTS = createTShirtProductValues();
+        ContentValues ValueSK = createSkirtProductValues();
+        ContentValues ValueJ = createJackCustomerValues();
+        ContentValues ValueM = createMaryCustomerValues();
+        long productTSRowId = db.insert(PurchaseContract.ProductEntry.TABLE_NAME, null, ValueTS);
+        long productSKRowId = db.insert(PurchaseContract.ProductEntry.TABLE_NAME, null, ValueSK);
+        long customerJRowId = db.insert(PurchaseContract.CustomerEntry.TABLE_NAME, null, ValueJ);
+        long customerMRowId = db.insert(PurchaseContract.CustomerEntry.TABLE_NAME, null, ValueM);
+
+        ContentValues relationValue1 = createRelationValues(customerJRowId, productTSRowId);
+        ContentValues relationValue2 = createRelationValues(customerMRowId, productSKRowId);
+        long relationRowId1 = db.insert(PurchaseContract.RelationEntry.TABLE_NAME, null, relationValue1);
+        long relationRowId2 = db.insert(PurchaseContract.RelationEntry.TABLE_NAME, null, relationValue2);
+
+        ContentValues testValueJ = createTestValues("Jack", "T-shirt", 50);
+        ContentValues testValueM = createTestValues("Mary", "skirt", 80);
+
+        Cursor jCursor = db.rawQuery("SELECT customer._id, product.name, product.price " +
+                "FROM customer " +
+                "JOIN relation ON customer._id = relation.customer_id " +
+                "JOIN product ON relation.product_id = product._id " +
+                "WHERE customer.name='Jack'", null);
+        Cursor mCursor = db.rawQuery("SELECT customer._id, product.name, product.price " +
+                "FROM customer " +
+                "JOIN relation ON customer._id = relation.customer_id " +
+                "JOIN product ON relation.product_id = product._id " +
+                "WHERE customer.name='Mary'", null);
+
+        jCursor.moveToFirst();
+        TestUtilities.validateCurrentRecord("testInsertReadDb relationEntry failed to validate",
+                jCursor, testValueJ);
+        mCursor.moveToFirst();
+        TestUtilities.validateCurrentRecord("testInsertReadDb relationEntry failed to validate",
+                mCursor, testValueM);
+
+        jCursor.close();
+        mCursor.close();
+        dbHelper.close();
+    }
+
+    static ContentValues createTestValues(String customerName, String productName, int price) {
+        // Create a new map of values, where column names are the keys
+        ContentValues testValues = new ContentValues();
+        testValues.put(PurchaseContract.CustomerEntry.COLUMN_CUSTOMER_NAME, customerName);
+        testValues.put(PurchaseContract.ProductEntry.COLUMN_PRODUCT_NAME, productName);
+        testValues.put(PurchaseContract.ProductEntry.COLUMN_PRODUCT_PRICE, price);
+        return testValues;
+    }
+
+
+
 }

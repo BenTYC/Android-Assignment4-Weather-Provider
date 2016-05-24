@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.test.AndroidTestCase;
+import android.util.Log;
 
 import com.example.android.sunshine.app.utils.PollingCheck;
 
@@ -40,6 +41,7 @@ public class TestUtilities extends AndroidTestCase {
             assertEquals("Value '" + entry.getValue().toString() +
                     "' did not match the expected value '" +
                     expectedValue + "'. " + error, expectedValue, valueCursor.getString(idx));
+            Log.v("validate: ", expectedValue + ", " + valueCursor.getString(idx));
         }
     }
 
